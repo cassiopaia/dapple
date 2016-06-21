@@ -41,17 +41,53 @@ describe('class Builder', function () {
     var classes = testenv.golden.SOLC_OUT();
     var headers = Builder.extractClassHeaders(classes);
     var compiled = Builder.compileJsModule({
-      name: 'golden', headers: headers
+      name: 'golden', headers: headers, deployData: true,
+      packageRoot: testenv.golden.ROOT
     });
     // Uncomment to make new golden record
-    fs.writeFileSync(testenv.golden.JS_OUT_PATH(), compiled);
-    assert.deepEqual(testenv.golden.JS_OUT(), compiled);
+    // fs.writeFileSync(testenv.golden.JS_OUT_PATH(), compiled);
+    assert.deepEqual(compiled, testenv.golden.JS_OUT());
+    done();
+  });
+  it('writeJsHeader can also leave out the bytecode', function (done) {
+    var classes = testenv.golden.SOLC_OUT();
+    var headers = Builder.extractClassHeaders(classes);
+    var compiled = Builder.compileJsModule({
+      name: 'golden', headers: headers, deployData: false,
+      packageRoot: testenv.golden.ROOT
+    });
+    // Uncomment to make new golden record
+    // fs.writeFileSync(testenv.golden.NO_DEPLOY_JS_OUT_PATH(), compiled);
+    assert.deepEqual(compiled, testenv.golden.NO_DEPLOY_JS_OUT());
+    done();
+  });
+  it('writeJsHeader also lets the user override the dapple global', function (done) {
+    var classes = testenv.golden.SOLC_OUT();
+    var headers = Builder.extractClassHeaders(classes);
+    var compiled = Builder.compileJsModule({
+      name: 'golden', deployData: true, globalVar: 'my_global',
+      headers: headers, packageRoot: testenv.golden.ROOT
+    });
+    // Uncomment to make new golden record
+    // fs.writeFileSync(testenv.golden.MY_GLOBAL_JS_OUT_PATH(), compiled);
+    assert.deepEqual(compiled, testenv.golden.MY_GLOBAL_JS_OUT());
     done();
   });
   it('produces an importable JS file', function () {
     var dappleModule = require(path.join(testenv.golden.JS_OUT_PATH()));
     assert.isFunction(dappleModule.class);
     assert.isObject(dappleModule.environments);
+  });
+  it('can also produce a Meteor-friendly file', function () {
+    var classes = testenv.golden.SOLC_OUT();
+    var headers = Builder.extractClassHeaders(classes);
+    var compiled = Builder.compileJsModule({
+      name: 'golden', headers: headers, deployData: true,
+      packageRoot: testenv.golden.ROOT, template: 'meteor'
+    });
+    // Uncomment to make new golden record
+    // fs.writeFileSync(testenv.golden.METEOR_OUT_PATH(), compiled);
+    assert.deepEqual(compiled, testenv.golden.METEOR_OUT());
   });
   it.skip('has helpful error when directory layout misconfigured');
 });

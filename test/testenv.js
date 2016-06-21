@@ -20,18 +20,35 @@ module.exports = {
     JS_OUT: function () {
       return fs.readFileSync(this.JS_OUT_PATH(), 'utf8');
     },
+    METEOR_OUT_PATH: function () {
+      return path.join(__dirname, '_fixtures', 'golden', 'meteor.js');
+    },
+    METEOR_OUT: function () {
+      return fs.readFileSync(this.METEOR_OUT_PATH(), 'utf8');
+    },
     SOLC_OUT_PATH: function () {
       return path.join(__dirname, '_fixtures', 'golden', 'solc_out.json');
     },
     SOLC_OUT: function () {
       return fs.readJsonSync(this.SOLC_OUT_PATH());
     },
+    NO_DEPLOY_JS_OUT_PATH: function () {
+      return path.join(__dirname, '_fixtures', 'golden', 'js_module.no_deploy.js');
+    },
+    NO_DEPLOY_JS_OUT: function () {
+      return fs.readFileSync(this.NO_DEPLOY_JS_OUT_PATH(), 'utf8');
+    },
+    MY_GLOBAL_JS_OUT_PATH: function () {
+      return path.join(__dirname, '_fixtures', 'golden', 'js_module.my_global.js');
+    },
+    MY_GLOBAL_JS_OUT: function () {
+      return fs.readFileSync(this.MY_GLOBAL_JS_OUT_PATH(), 'utf8');
+    },
     INIT_EMPTY_DIR: path.join(
       __dirname, '_fixtures', 'golden', 'golden_init'),
     FILTERED_SOLC_OUT_PATH: path.join(
       __dirname, '_fixtures', 'golden', 'golden_solc_classes_out')
   },
-
   dsl_package_dir: path.join(
     __dirname, '_fixtures', 'testenv', 'deploy_package'),
 

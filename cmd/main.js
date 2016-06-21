@@ -7,8 +7,29 @@
 // Usage first.
 var fs = require('fs');
 var docopt = require('docopt');
-var doc = fs.readFileSync(__dirname + '/docopt.txt').toString();
-var cli = docopt.docopt(doc);
+var cliSpec = require('../specs/cli.json');
+var packageSpec = require('../package.json');
+var clc = require('cli-color-tty')(true);
+var _ = require('lodash');
+var cli = docopt.docopt(getUsage(cliSpec), {
+  version: packageSpec.version,
+  help: false
+});
+
+// Builds the docopt usage from the spec
+function getUsage (cliSpec) {
+  const usage =
+    '    ' +
+    cliSpec.commands
+      .map(c => `dapple ${c.name} ${c.options.map(o => o.name).join(' ')}`)
+      .join('\n    ');
+  const options =
+    '    ' +
+    cliSpec.options
+      .map(o => o.name)
+      .join('\n    ');
+  return `Usage:\n${usage}\n\nOptions:\n${options}`;
+}
 
 // These requires take a lot of time to import.
 var req = require('lazreq')({
@@ -19,12 +40,42 @@ var req = require('lazreq')({
   path: 'path',
   pipelines: '../lib/pipelines.js',
   userHome: 'user-home',
-  vinyl: 'vinyl-fs'
+  vinyl: 'vinyl-fs',
+  doctor: '../lib/doctor.js'
 });
 
 var Workspace = require('../lib/workspace');
 var VMTest = require('../lib/vmtest');
 var rc = Workspace.getDappleRC();
+
+if (cli['--help']) {
+  // get the package HEAD hash to identify the version
+  const build = fs.readFileSync(__dirname + '/../.git/ORIG_HEAD').toString();
+
+  // apend the charactar `char` to a given string to match the desired length `number`
+  const appendChar = (str, char, number) => {
+    for (let i = str.length; i < number; i++) { str += char; }
+    return str;
+  };
+
+  const longestOption =
+    Math.max.apply(this, cliSpec.commands.map(c => Math.max.apply(this, c.options.map(o => o.name.length))));
+
+  const usage = cliSpec.commands
+    .map(c => {
+      let options = c
+        .options.map(o => clc.bold(appendChar(o.name, ' ', longestOption + 4)) + o.summary);
+      let required = c.options.filter(o => /^\s*\</.test(o.name)).map(o => o.name).join(' ');
+      if (options.length > 0) options.push('');
+      return `${appendChar(clc.green('dapple ' + c.name) + ' ' + required + ' ', ' ', longestOption + 18)}${c.summary}\n        ${options.join('\n        ')}`;
+    });
+
+  const options =
+    cliSpec.options
+      .map(o => o.name);
+
+  console.log(`dapple version: ${packageSpec.version}-${build.slice(0, 10)}\n\nUSAGE: dapple COMMAND [OPTIONS]\n\nCOMMANDS:\n    ${usage.join('\n    ')}\n\nOPTIONS:\n    ${options.join('\n     ')}`);
+}
 
 if (cli.config || typeof (rc.path) === 'undefined') {
   let homeRC = req.path.join(req.userHome, '.dapplerc');
@@ -59,19 +110,26 @@ if (cli.config || typeof (rc.path) === 'undefined') {
 // a git repository. Otherwise we'll just clone them.
 if (cli.install) {
   let workspace = Workspace.atPackageRoot();
-  let env = cli['--environment'] || workspace.getEnvironment();
+  // let env = cli['--environment'] || workspace.getEnvironment();
+  let env = 'morden';
 
   if (!(env in rc.data.environments)) {
     console.error('Environment not defined: ' + env);
     process.exit(1);
   }
   let web3 = rc.environment(env).ethereum || 'internal';
+  let dappfileEnv = workspace.dappfile.environments &&
+                  workspace.dappfile.environments[env] ||
+                  {};
+  let environment = _.merge({}, rc.environment(env), dappfileEnv);
 
   let packages;
   if (cli['<package>']) {
     if (!cli['<url-or-version>']) {
-      console.error('No version or URL specified for package.');
-      process.exit(1);
+      // asume dapphub package
+      cli['<url-or-version>'] = 'latest';
+      // console.error('No version or URL specified for package.');
+      // process.exit(1);
     }
     packages = {};
     packages[cli['<package>']] = cli['<url-or-version>'];
@@ -79,7 +137,7 @@ if (cli.install) {
     packages = workspace.getDependencies();
   }
 
-  let success = req.Installer.install(packages, console, web3);
+  let success = req.Installer.install(packages, console, web3, environment);
 
   if (success && cli['--save'] && cli['<package>']) {
     workspace.addDependency(cli['<package>'], cli['<url-or-version>']);
@@ -112,10 +170,15 @@ if (cli.install) {
   // Run our build pipeline.
   let jsBuildPipeline = req.pipelines
     .JSBuildPipeline({
-      deploy_data: !cli['--no-deploy-data'],
+      deployData: !cli['--no-deploy-data'],
       environment: env,
+      optimize: cli['--optimize'],
       environments: environments,
+      globalVar: cli['--global'],
+      template: cli['--template'],
+      name: workspace.dappfile.name,
       nameFilter: nameFilter,
+      include_tests: cli['--tests'],
       subpackages: cli['--subpackages'] || cli['-s']
     });
 
@@ -128,7 +191,11 @@ if (cli.install) {
 // Dapple package and exit.
 //
 } else if (cli.init) {
-  Workspace.initialize(process.cwd());
+  try {
+    Workspace.initialize(process.cwd());
+  } catch (e) {
+    console.error('ERROR: ' + e.message);
+  }
 
 // If they ran the `new test` command, we're going to generate the boilerplate
 // sol files. This command is checked for before the `test` command otherwise
@@ -147,6 +214,7 @@ if (cli.install) {
   let nameFilter;
   let workspace = Workspace.atPackageRoot();
   let env = cli['--environment'] || workspace.getEnvironment();
+  let report = cli['--report'] || false;
 
   if (!(env in rc.data.environments)) {
     console.error('Environment not defined: ' + env);
@@ -170,8 +238,10 @@ if (cli.install) {
   } else {
     initStream = req.pipelines
       .BuildPipeline({
+        optimize: cli['--optimize'],
         packageRoot: Workspace.findPackageRoot(),
-        subpackages: cli['--subpackages'] || cli['-s']
+        subpackages: cli['--subpackages'] || cli['-s'],
+        report
       })
       .pipe(req.vinyl.dest(Workspace.findBuildPath()));
   }
@@ -187,6 +257,8 @@ if (cli.install) {
   let fileName = cli['<script>'];
   // TODO - refactor to wirkspace
   let file = fs.readFileSync(workspace.getPackageRoot() + '/' + fileName, 'utf8');
+  let confirmationBlocks = workspace.dappfile.environments[env].confirmationBlocks;
+  if (typeof confirmationBlocks === 'undefined') confirmationBlocks = 1;
   req.pipelines
       .BuildPipeline({
         packageRoot: Workspace.findPackageRoot(),
@@ -198,7 +270,8 @@ if (cli.install) {
       simulate: !cli['--no-simulation'],
       throws: !cli['--force'],
       web3: (rc.environment(env).ethereum || 'internal'),
-      workspace: workspace
+      workspace: workspace,
+      confirmationBlocks: confirmationBlocks
     }));
 } else if (cli.step) {
   let workspace = Workspace.atPackageRoot();
@@ -220,7 +293,11 @@ if (cli.install) {
     }));
 } else if (cli.publish) {
   let workspace = Workspace.atPackageRoot();
-  let env = cli['--environment'] || workspace.getEnvironment();
+  let env = cli['--environment'] || 'morden';
+  let dappfileEnv = workspace.dappfile.environments &&
+                  workspace.dappfile.environments[env] ||
+                  {};
+  let environment = _.merge({}, rc.environment(env), dappfileEnv);
   // TODO - find a nicer way to inherit and normalize environments: dapplerc -> dappfile -> cli settings
   req.pipelines
       .BuildPipeline({
@@ -228,11 +305,11 @@ if (cli.install) {
         subpackages: cli['--subpackages'] || cli['-s']
       })
       .pipe(req.pipelines.PublishPipeline({
-        environment: env,
         dappfile: workspace.dappfile,
         ipfs: rc.environment(env).ipfs,
         path: workspace.package_root,
-        web3: (rc.environment(env).ethereum || 'internal')
+        web3: (rc.environment(env).ethereum || 'internal'),
+        environment: environment
       }));
 } else if (cli.add) {
   let workspace = Workspace.atPackageRoot();
@@ -240,4 +317,7 @@ if (cli.install) {
 } else if (cli.ignore) {
   let workspace = Workspace.atPackageRoot();
   workspace.ignorePath(cli['<path>']);
+} else if (cli.doctor) {
+  let root = Workspace.findPackageRoot();
+  req.doctor(root);
 }

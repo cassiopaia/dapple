@@ -1,0 +1,11 @@
+{
+  "title": "dapplerc data model", 
+  "type": "object",
+  "properties": {
+    "environments": {
+      "$ref": "definitions#/definitions/environments"
+    }
+  },
+  "additionalProperties": false,
+  "required": [ "environments" ]
+}

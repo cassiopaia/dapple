@@ -1,7 +1,7 @@
 {
   "name": "dapple",
-  "version": "0.3.0",
-  "description": "dapp development tool",
+  "version": "0.7.2",
+  "description": "Solidity developer multitool",
   "keywords": [
     "dapp",
     "ethereum",
@@ -25,7 +25,7 @@
     "url": "https://github.com/nexusdev/dapple.git"
   },
   "bugs": {
-    "url": "https://github.com/NexusDevelopment/dapple/issues"
+    "url": "https://github.com/nexusdev/dapple/issues"
   },
   "scripts": {
     "test": "./node_modules/semistandard/bin/cmd.js && ./node_modules/mocha/bin/mocha --recursive test/*",
@@ -33,7 +33,7 @@
   },
   "main": "lib.js",
   "bin": {
-    "dapple": "./cmd/main.js"
+    "dapple": "cmd/main.js"
   },
   "directories": {
     "lib": "lib",
@@ -44,12 +44,13 @@
   "dependencies": {
     "chai": "^3.4.1",
     "cli-color-tty": "^2.0.0",
+    "dapphub": "0.0.7",
     "deasync": "^0.1.4",
     "dir-compare": "0.0.2",
     "docopt": "^0.6.2",
-    "ethereumjs-lib": "^1.0.1",
-    "file": "^0.2.2",
+    "ethereumjs-lib": "^3.0.0",
     "ethersim": "git+https://github.com/nexusdev/EtherSim.git",
+    "file": "^0.2.2",
     "fs-extra": "^0.26.3",
     "fs-readdir-recursive": "^1.0.0",
     "geth": "^0.1.4",
@@ -71,12 +72,14 @@
     "multimatch": "^2.1.0",
     "read-yaml": "^1.0.0",
     "semver": "^5.1.0",
-    "solc": "^0.1.6",
+    "shelljs": "^0.6.0",
+    "solc": "^0.3.1-1",
     "stream-combiner": "^0.2.2",
     "through2": "^2.0.0",
     "tmp": "0.0.28",
     "tv4": "^1.2.7",
     "user-home": "^2.0.0",
+    "vinyl": "^1.1.1",
     "vinyl-buffer": "^1.0.0",
     "vinyl-fs": "^2.2.1",
     "web3": "^0.15.1",
@@ -93,7 +96,8 @@
   },
   "semistandard": {
     "ignore": [
-      "doc"
+      "doc",
+      "test/_fixtures"
     ]
   }
 }

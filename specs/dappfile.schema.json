@@ -69,8 +69,7 @@
     },
 
     "environments": {
-      "$ref": "#/definitions/environments",
-      "default": {}
+      "$ref": "definitions#/definitions/environments"
     }
 
   },
@@ -83,23 +82,35 @@
       "additionalProperties": false,
       "patternProperties": {
         "^.*$": {
-          "title": "Path",
-          "description": "Dependency path.",
-          "type": "string"
+          "oneOf": [{
+            "title": "Path",
+            "description": "Dependency path.",
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "aditionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
+            }
+          }]
         }
       }
     },
 
-    "environments": {
-      "title": "Environments",
-      "description": "Local environments options",
-      "additionalProperties": false,
-      "patternProperties": {
-        "^\\w+$": {
-          "title": "named environment specification",
-          "$ref": "definitions#/definitions/environmentSpec"
-        }
-      }
+    "depGitUrl": {
+      "type": "string",
+      "pattern": "^(.+.git)(?:@([a-z0-9]+))$"
+    },
+
+    "depPath": {
+      "type": "string",
+      "pattern": ""
     }
   },
 

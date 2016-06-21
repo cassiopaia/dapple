@@ -27,7 +27,6 @@ dapple['golden'] = (function builder () {
     return this._class.new.apply(this._class, args);
   };
 
-  // Wrap pass-through functions by name.
   var passthroughs = ['at', 'new'];
   for (var i = 0; i < passthroughs.length; i += 1) {
     ContractWrapper.prototype[passthroughs[i]] = (function (passthrough) {
@@ -42,6 +41,9 @@ dapple['golden'] = (function builder () {
       env = {};
     }
     while (typeof env !== 'object') {
+      if (!(env in environments)) {
+        throw new Error('Cannot resolve environment name: ' + env);
+      }
       env = environments[env];
     }
 
